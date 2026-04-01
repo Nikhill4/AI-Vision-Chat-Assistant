@@ -4,6 +4,7 @@ import os
 import sys
 import traceback
 import tempfile
+import threading
 from image_model import predict_image
 from chatbot import get_bot_response
 
@@ -31,6 +32,9 @@ else:
 print("[INFO] Flask app initializing...")
 print(f"[INFO] Upload folder: {UPLOAD_FOLDER}")
 print("[INFO] ⚠️  Using system temp folder to avoid OneDrive sync issues")
+
+latest_image_context = None
+context_lock = threading.Lock()
 
 @app.route("/", methods=["GET"])
 def home():
@@ -95,10 +99,24 @@ def predict():
         if not os.path.exists(filepath):
             raise RuntimeError(f"File lost after save - OneDrive may have moved it: {filepath}")
 
-        prediction = predict_image(filepath)
-        print(f"[INFO] Prediction result: {prediction}")
+        prediction_data = predict_image(filepath)
+        print(f"[INFO] Prediction result: {prediction_data}")
 
-        return jsonify({"prediction": prediction}), 200
+        with context_lock:
+            global latest_image_context
+            latest_image_context = {
+                "filename": file.filename,
+                "filepath": filepath,
+                "summary": prediction_data.get("summary"),
+                "primary_label": prediction_data.get("primary_label"),
+                "primary_confidence": prediction_data.get("primary_confidence"),
+                "top_predictions": prediction_data.get("top_predictions", [])
+            }
+
+        return jsonify({
+            "prediction": prediction_data.get("prediction"),
+            "image_context": latest_image_context
+        }), 200
     except Exception as e:
         error_msg = f"Error in predict: {str(e)}"
         print(f"[ERROR] {error_msg}")
@@ -122,10 +140,14 @@ def chat():
             return jsonify({"error": "Message cannot be empty"}), 400
 
         print(f"[INFO] User message: {user_message}")
-        reply = get_bot_response(user_message)
+
+        with context_lock:
+            current_image_context = latest_image_context.copy() if latest_image_context else None
+
+        reply = get_bot_response(user_message, image_context=current_image_context)
         print(f"[INFO] Bot reply: {reply}")
 
-        return jsonify({"reply": reply}), 200
+        return jsonify({"reply": reply, "image_context": current_image_context}), 200
     except Exception as e:
         error_msg = f"Error in chat: {str(e)}"
         print(f"[ERROR] {error_msg}")
