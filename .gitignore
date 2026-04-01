@@ -43,6 +43,7 @@ env/
 node_modules/
 npm-debug.log
 yarn-error.log
+frontend/client/dist/
 
 # Uploads
 backend/uploads/*
