@@ -1,77 +1,157 @@
 # 🤖 AI Vision Chat Assistant
 
-A professional full-stack web application combining **Image Recognition** and **AI Chatbot** features. Powered by TensorFlow's MobileNetV2 and a rule-based AI assistant.
+Full-stack application for image recognition + contextual chat.
+
+- **Backend:** Flask + TensorFlow MobileNetV2
+- **Frontend:** React (Vite)
+- **Key behavior:** Chat answers can use the **latest uploaded image context** (top predictions + confidence)
 
 ---
 
 ## ✨ Features
 
-- 🖼️ **Image Recognition**: Upload images to get instant AI predictions using MobileNetV2.
-- 💬 **AI Chatbot**: Intelligent rule-based assistant for technical questions.
-- 🕒 **Analysis History**: Keeps track of your previous image predictions (persisted locally).
-- 🌓 **Theme Toggle**: Seamless Dark and Light mode support.
-- 🖱️ **Drag & Drop**: Modern, user-friendly file upload interaction.
-- ✨ **Glassmorphic UI**: Premium "Midnight & Neon" design with smooth animations.
-- 📱 **Responsive Design**: Works perfectly on desktop and mobile.
+- 🖼️ **Image Recognition:** Upload an image and get model predictions.
+- 📊 **Richer Model Output:** Uses multiple image views and returns top predictions with confidence scores.
+- 💬 **Context-Aware Chat:** Chat uses the most recent image analysis to answer "what is in image", "confidence", "top predictions", etc.
+- 🎨 **Modern UI:** Responsive React interface with image preview and chat-side context panel.
 
 ---
 
-## 🚀 Quick Start
+## 📁 Project Structure
 
-### 1. Setup Backend
-```powershell
+```
+AI-Vision-Chat-Assistant/
+├── backend/
+│   ├── app.py
+│   ├── image_model.py
+│   ├── chatbot.py
+│   └── requirements.txt
+└── frontend/
+        └── client/
+                ├── package.json
+                ├── index.html
+                ├── vite.config.js
+                └── src/
+                        ├── App.jsx
+                        ├── api.js
+                        ├── main.jsx
+                        └── styles.css
+```
+
+---
+
+## 🚀 Quick Start (Linux/macOS)
+
+### 1) Create Python 3.11 virtual environment (project root)
+
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+```
+
+### 2) Install backend dependencies
+
+```bash
 cd backend
-python -m venv venv
-.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+### 3) Run backend
+
+```bash
 python app.py
 ```
 
-### 2. Setup Frontend
-```powershell
-cd frontend\client
+Backend runs at `http://localhost:5000`.
+
+### 4) Run frontend (new terminal)
+
+```bash
+cd frontend/client
 npm install
-npm start
+npm run dev
 ```
+
+Frontend dev server runs at Vite default URL (usually `http://localhost:5173`).
 
 ---
 
-## 🏗️ Project Structure
+## ⚙️ Frontend Environment
 
+Optional environment variable in `frontend/client/.env`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:5000
 ```
-AI_Vision_Chat_Assistant/
-├── backend/
-│   ├── app.py              # Flask server with API endpoints
-│   ├── image_model.py      # TensorFlow ML logic
-│   ├── chatbot.py          # AI assistant logic
-│   └── uploads/            # Temporary storage for analysis
-└── frontend/
-    └── client/
-        ├── src/
-        │   ├── App.js      # Main View Container
-        │   ├── Chat.js     # AI Chat Component
-        │   └── ImageUpload.js # Vision Analysis Component
-        └── index.css       # Global Midnight Design System
-```
+
+If not set, frontend defaults to `http://localhost:5000`.
 
 ---
 
-## 📡 API Endpoints
+## 📡 API
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/predict` | POST | Analyze uploaded image files |
-| `/chat` | POST | Send messages to AI Assistant |
-| `/health` | GET | Check backend server status |
+### `GET /health`
+
+Health check.
+
+**Response**
+
+```json
+{ "status": "healthy" }
+```
+
+### `POST /predict`
+
+Upload image as `multipart/form-data` with key `image`.
+
+**Response**
+
+```json
+{
+    "prediction": "Likely tennis ball (27.4% confidence)",
+    "image_context": {
+        "filename": "sample.png",
+        "filepath": "/tmp/ai_vision_uploads/image_xxx.png",
+        "summary": "Likely tennis ball (27.4% confidence)",
+        "primary_label": "tennis ball",
+        "primary_confidence": 27.44,
+        "top_predictions": [
+            { "class_id": "n04409515", "label": "tennis ball", "confidence": 27.44 },
+            { "class_id": "n07802026", "label": "hay", "confidence": 3.18 },
+            { "class_id": "n02782093", "label": "balloon", "confidence": 2.52 }
+        ]
+    }
+}
+```
+
+### `POST /chat`
+
+Send JSON body:
+
+```json
+{ "message": "what is in my image?" }
+```
+
+**Response**
+
+```json
+{
+    "reply": "From your latest upload: ...",
+    "image_context": { "...": "latest prediction context" }
+}
+```
 
 ---
 
 ## 🔧 Troubleshooting
 
-- **Backend Connection**: Ensure Flask is running on `http://localhost:5000`.
-- **First Load**: TensorFlow model may take 30-60 seconds to download on first run.
-- **Port Conflict**: If port 5000 is occupied, use `netstat -ano | findstr :5000` to find and kill the process.
+- If you see `ModuleNotFoundError: No module named 'flask'`, activate venv first: `source venv/bin/activate`.
+- First TensorFlow startup may take time because model assets are loaded/downloaded.
+- If `tensorflow==2.12.0` fails to install, use Python 3.11 for this project.
 
 ---
 
-**Last Updated:** February 25, 2026 | **Version:** 3.0 (Professional Redesign)
+## 📌 Notes
+
+- Chat context is based on the **latest** uploaded image for the running backend instance.
+- Uploaded files are saved in a temporary system directory (`/tmp/ai_vision_uploads`).
